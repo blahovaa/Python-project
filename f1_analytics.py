@@ -1,5 +1,5 @@
 import streamlit as st
-import fastf1 as ff1
+import fastf1
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
@@ -465,7 +465,7 @@ elif st.session_state.page == 'Seasons':
 
     # Number of Grand Prix
     try:
-        sched = ff1.get_event_schedule(year)
+        sched = fastf1.get_event_schedule(year)
         races = sched[sched.EventName.str.contains("Grand Prix")]
     except Exception as e:
         st.error(f"Schedule error: {e}")
@@ -528,7 +528,6 @@ elif st.session_state.page == 'Seasons':
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No points data returned by Jolpica.")
-=======
 
    
 
