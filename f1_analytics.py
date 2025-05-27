@@ -2,10 +2,19 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from datetime import timedelta
 import pandas as pd
 import plotly.express as px
 from dateutil import parser
 import re
+import fastf1
+import os
+import matplotlib.pyplot as plt
+from fastf1 import utils
+import seaborn as sns
+
+cache_path = 'fastf1_cache'
+os.makedirs(cache_path, exist_ok=True)
 
 if 'page' not in st.session_state:
     st.session_state.page = 'Home'
@@ -138,9 +147,245 @@ elif st.session_state.page == 'Drivers':
             st.markdown(f"**Podiums:** {driver_info.get('podiums', 'N/A')}")
 
         with col2:
+            st.markdown(" ")
             if driver_info.get("image"):
                 st.image(driver_info["image"], width=180, caption=selected_driver['name'])
             else:
                 st.info("No image available.")
     if __name__ == "__main__":
         main()
+
+
+#----------- RACE ------------
+elif st.session_state.page == 'Races':
+    st.title("🏎️ Race Statistics")
+
+    
+    # Enable cache (run once)
+    fastf1.Cache.enable_cache('fastf1_cache')
+
+    # Year selection
+    current_year = datetime.now().year
+    year = st.selectbox("Select a Year", list(range(2018, current_year + 1))[::-1])
+
+    # Get event schedule and filter out testing events
+    @st.cache_data
+    def get_race_events(year):
+        schedule = fastf1.get_event_schedule(year)
+        # Exclude testing or undefined rounds
+        schedule = schedule[
+            (schedule['EventFormat'] != 'Testing') &
+            (~schedule['EventName'].str.contains("Test", case=False, na=False)) &
+            (schedule['RoundNumber'].notna())
+        ]
+        return schedule
+
+    schedule = get_race_events(year)
+    race_names = schedule['EventName'].tolist()
+    selected_race_name = st.selectbox("Select a Race", race_names)
+
+    selected_race = schedule[schedule['EventName'] == selected_race_name].iloc[0]
+    round_number = int(selected_race['RoundNumber'])
+
+    # Load the race session
+    try:
+        session = fastf1.get_session(year, round_number, 'R')
+        session.load()
+
+        st.title(f"🏁 {selected_race_name} {year}")
+        results = session.results
+    except Exception as e:
+        st.error(f"Could not load session: {e}")
+    
+    #positions by laps
+    lap_pos = session.laps.groupby(["LapNumber", "Driver"])["Position"].mean().unstack()
+
+    #positions after final lap
+    final_lap = lap_pos.index.max()
+    final_positions = lap_pos.loc[final_lap].sort_values()
+    top3 = final_positions.head(3)
+
+    top3_info = []
+    for driver_code in top3.index:
+        driver_info = results[results['Abbreviation'] == driver_code].iloc[0]
+        full_name = f"{driver_info['FirstName']} {driver_info['LastName']}"
+        team = driver_info['TeamName']
+        pos = top3.loc[driver_code]
+        top3_info.append((full_name, team, int(pos)))
+
+    # Display top 3 drivers
+    st.markdown("### 🏆 Podium")
+    for i, (name, team, pos) in enumerate(top3_info, 1):
+        st.markdown(f"**{i}. {name}** ({team})")
+
+    palette = sns.color_palette("tab20", n_colors=len(lap_pos.columns))
+
+    # Plot
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(12, 8))
+    lap_pos.plot(ax=ax, linewidth=2, color=palette)
+
+    ax.set_title("Race Position Chart", fontsize=18, weight='bold')
+    ax.set_xlabel("Lap Number", fontsize=14)
+    ax.set_ylabel("Position", fontsize=14)
+    ax.invert_yaxis() 
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    ax.legend(title="Driver", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    #add a button to compare drivers
+    if st.button("Compare Drivers"):
+        st.session_state.compare_mode = True
+
+    if 'compare_mode' not in st.session_state:
+        st.session_state.compare_mode = False
+
+    if st.session_state.compare_mode:
+        laps = session.laps
+
+        #select drivers by names
+        driver_map = {
+            row['Abbreviation']: f"{row['FirstName']} {row['LastName']}"
+            for _, row in results.iterrows()
+        }
+
+        name_to_abbr = {v: k for k, v in driver_map.items()}
+
+        driver1_full = st.selectbox("Select Driver 1", list(driver_map.values()))
+        driver2_full = st.selectbox("Select Driver 2", list(driver_map.values()))
+
+        driver1 = name_to_abbr[driver1_full]
+        driver2 = name_to_abbr[driver2_full]
+
+        driver1_laps = laps.pick_driver(driver1).pick_quicklaps()
+        driver2_laps = laps.pick_driver(driver2).pick_quicklaps()
+
+        #DRIVER STATS
+        #laps completed
+        laps_completed1 = len(driver1_laps)
+        laps_completed2 = len(driver2_laps)
+        #average lap time
+        avg_time1 = driver1_laps['LapTime'].mean()
+        avg_time2 = driver2_laps['LapTime'].mean()
+        #fastest lap
+        fastest1 = driver1_laps['LapTime'].min()
+        fastest2 = driver2_laps['LapTime'].min()
+        #position at finish
+        pos1 = results[results['Abbreviation'] == driver1]['Position'].values[0]
+        pos2 = results[results['Abbreviation'] == driver2]['Position'].values[0]
+        #start vs. finish position
+        grid1 = results[results['Abbreviation'] == driver1]['GridPosition'].values[0]
+        grid2 = results[results['Abbreviation'] == driver2]['GridPosition'].values[0]
+        #pit stops
+        driver1_pits = laps.pick_driver(driver1).query("PitInTime.notnull()")
+        driver2_pits = laps.pick_driver(driver2).query("PitInTime.notnull()")
+
+        num_pits1 = len(driver1_pits)
+        num_pits2 = len(driver2_pits)
+
+        def format_lap_time(td):
+            if isinstance(td, timedelta):
+                total_seconds = td.total_seconds()
+            else:
+                total_seconds = td
+            minutes = int(total_seconds // 60)
+            seconds = int(total_seconds % 60)
+            milliseconds = int((total_seconds - int(total_seconds)) * 1000)
+            return f"{minutes}m {seconds}s {milliseconds}ms"
+
+        st.markdown("### 🧮 Race Stats Comparison")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(driver1_full)
+            st.write(f"Fastest Lap: `{format_lap_time(fastest1)}`")
+            st.write(f"Avg Lap Time: `{format_lap_time(avg_time1)}`")
+            st.write(f"Position: `{int(pos1)}`")
+            st.write(f"Pits: `{int(num_pits1)}`")
+            st.write(f"Grid → Finish: `{int(grid1)} → {int(pos1)}`")
+
+        with col2:
+            st.subheader(driver2_full)
+            st.write(f"Fastest Lap: `{format_lap_time(fastest2)}`")
+            st.write(f"Avg Lap Time: `{format_lap_time(avg_time2)}`")
+            st.write(f"Position: `{int(pos2)}`")
+            st.write(f"Pits: `{int(num_pits2)}`")
+            st.write(f"Grid → Finish: `{int(grid2)} → {int(pos2)}`")
+        #plots
+        palette = sns.color_palette("Set2", n_colors=2)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.plot(
+            driver1_laps['LapNumber'], 
+            driver1_laps['LapTime'].dt.total_seconds(), 
+            label=driver1_full, 
+            color=palette[0], 
+            linewidth=2, 
+            marker='o'
+        )
+
+        ax.plot(
+            driver2_laps['LapNumber'], 
+            driver2_laps['LapTime'].dt.total_seconds(), 
+            label=driver2_full, 
+            color=palette[1], 
+            linewidth=2, 
+            marker='s'
+        )
+
+        ax.set_title(f"Lap Time Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
+        ax.set_xlabel("Lap Number", fontsize=14)
+        ax.set_ylabel("Lap Time (s)", fontsize=14)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.legend(fontsize=12)
+        plt.tight_layout()
+
+        st.pyplot(fig)
+
+        #compare speed on their fastest lap
+        driver1_fastest = laps.pick_driver(driver1).pick_fastest()
+        driver2_fastest = laps.pick_driver(driver2).pick_fastest()
+
+        tel1 = driver1_fastest.get_car_data().add_distance()
+        tel2 = driver2_fastest.get_car_data().add_distance()
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        palette = sns.color_palette("Set2", n_colors=2)
+
+        ax.plot(
+            tel1['Distance'], tel1['Speed'], 
+            label=f"{driver1_full} Speed", 
+            color=palette[0], 
+            linewidth=2, 
+            linestyle='-'
+        )
+
+        ax.plot(
+            tel2['Distance'], tel2['Speed'], 
+            label=f"{driver2_full} Speed", 
+            color=palette[1], 
+            linewidth=2, 
+            linestyle='--'
+        )
+
+        ax.set_title(f"Telemetry Speed Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
+        ax.set_xlabel("Distance (m)", fontsize=14)
+        ax.set_ylabel("Speed (km/h)", fontsize=14)
+        ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.legend(fontsize=12, loc='best')
+
+        plt.tight_layout()
+        st.pyplot(fig)
+
+        if st.button("❌ Hide Comparison"):
+            st.session_state.compare_mode = False
+
+
+
+
+
+
