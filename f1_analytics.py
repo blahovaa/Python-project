@@ -13,6 +13,8 @@ from dateutil import parser
 import re
 from fastf1 import utils
 import seaborn as sns
+
+st.set_page_config(layout="wide")
          
 
 TEAM_COLORS = {
@@ -53,41 +55,55 @@ if st.session_state.page != previous_page:
 
 # Main content based on current page
 if st.session_state.page == 'Home':
-    st.title("🏁 Formula 1 Analytics")
-    st.write("Welcome! Use the sidebar to explore F1 data by Driver, Season, or Race.")
-    
-    # Extract data from Jolpica
-    API = "https://api.jolpi.ca/ergast/f1" 
+    col1, col2 = st.columns([2, 1]) 
 
-    try:
-        race = requests.get(f"{API}/current/last/results.json", timeout=6).json()["MRData"]["RaceTable"]["Races"][0]
-        race_name = race["raceName"]
-        top3_unordered = race["Results"][:3]
-        top3 = [top3_unordered[i] for i in (1, 0, 2)]                    
+    with col1:
+        st.title("Formula 1 Analytics")
+        st.markdown("""
+        Welcome to **Formula 1 Analytics**, a data-driven dashboard built for exploring and visualizing key moments and trends from the world of Formula 1. This project pulls in real F1 race data using the FastF1 and Ergast APIs, making it easy to dive into statistics across seasons, drivers, and races.
 
-        podium_df = pd.DataFrame({
-            "Place":  ["🥈 2nd", "🏆 1st", "🥉 3rd"],                   
-            "Driver": [f'{r["Driver"]["givenName"]} {r["Driver"]["familyName"]}' for r in top3],
-            "Team":   [r["Constructor"]["name"] for r in top3],
-            "Step":   [2, 3, 1]                     
-        })
+        Right here on the **Home** page, you’ll find a summary of the most recent Grand Prix podium, along with the current driver standings for the ongoing season.
 
-        st.markdown(f"## Latest Grand Prix – **{race_name}**")
+        Use the sidebar to explore more:
+        - Browse detailed **driver profiles** with extra info pulled from Wikipedia
+        - Analyze how **teams have performed** across past seasons
+        - Compare **individual races**, including lap times, race pace, and telemetry charts
 
-        fig = px.bar(
-            podium_df, x="Place", y="Step", color="Team", text="Driver", labels={"Step": ""},    
-            color_discrete_map=TEAM_COLORS, category_orders={"Place": ["🥈 2nd", "🏆 1st", "🥉 3rd"]})
-        fig.update_traces(textposition="outside")
-        fig.update_layout(showlegend=False, yaxis=dict(showticklabels=False, range=[0,3.6]))
-        st.plotly_chart(fig, use_container_width=True)
+        Whether you're a fan, a motorsport analyst, or just curious, this tool offers a simple way to understand the numbers behind the racing.
+         """)
 
-        podium_sorted = podium_df.sort_values("Step", ascending=False)
-        st.table(podium_sorted[["Place", "Driver", "Team"]].set_index("Place"))
+    with col2:
+        API = "https://api.jolpi.ca/ergast/f1"
+        try:
+            race = requests.get(f"{API}/current/last/results.json", timeout=6).json()["MRData"]["RaceTable"]["Races"][0]
+            race_name = race["raceName"]
+            top3_unordered = race["Results"][:3]
+            top3 = [top3_unordered[i] for i in (1, 0, 2)]                    
 
-    except Exception as e:
-        st.error(f"Could not load latest podium: {e}")
+            podium_df = pd.DataFrame({
+                "Place":  ["🥈 2nd", "🏆 1st", "🥉 3rd"],                   
+                "Driver": [f'{r["Driver"]["givenName"]} {r["Driver"]["familyName"]}' for r in top3],
+                "Team":   [r["Constructor"]["name"] for r in top3],
+                "Step":   [2, 3, 1]                     
+            })
+            
+            st.markdown(f"<div style='text-align: center;'>Latest Grand Prix:<br><strong style='font-size: 20px;'>{race_name}</strong></div>", unsafe_allow_html=True)
 
-    # Current season results
+            fig = px.bar(
+                podium_df, x="Place", y="Step", color="Team", text="Driver", labels={"Step": ""},
+                color_discrete_map=TEAM_COLORS, category_orders={"Place": ["🥈 2nd", "🏆 1st", "🥉 3rd"]}
+            )
+            fig.update_traces(textposition="outside")
+            fig.update_layout(showlegend=False, yaxis=dict(showticklabels=False, range=[0,3.6]))
+            st.plotly_chart(fig, use_container_width=True)
+
+            podium_sorted = podium_df.sort_values("Step", ascending=False)
+            st.table(podium_sorted[["Place", "Driver", "Team"]].set_index("Place"))
+
+        except Exception as e:
+            st.error(f"Could not load latest podium: {e}")
+
+    # Full-width section for championship standings
     try:
         rows = requests.get(f"{API}/current/driverStandings.json", timeout=6).json() \
             ["MRData"]["StandingsTable"]["StandingsLists"][0]["DriverStandings"]
