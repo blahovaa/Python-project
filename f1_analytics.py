@@ -479,15 +479,13 @@ elif st.session_state.page == 'Seasons':
     API = "https://api.jolpi.ca/ergast/f1"
     year = st.selectbox("Season", list(range(1990, 2025+1)), index=24)
 
-    # Number of Grand Prix
+    # Extracting data from fastf1 (number of Grand Prix)
     try:
         sched = fastf1.get_event_schedule(year)
         races = sched[sched.EventName.str.contains("Grand Prix")]
     except Exception as e:
         st.error(f"Schedule error: {e}")
         st.stop()
-
-    st.write(f"There was {len(races)} Grands Prix in {year}")
 
     # Extracting data from Jolpica
     team_wins, rows = {}, []
@@ -509,7 +507,33 @@ elif st.session_state.page == 'Seasons':
 
     if team_wins:
         st.subheader("🏆 Wins by Team")
-        st.bar_chart(pd.Series(team_wins, name="Wins"))
+        st.caption(f"The bar chart displays the number of Grand Prix wins achieved by each team during the **{year}** season.")
+
+        # Bar chart
+        wins_series = pd.Series(team_wins, name="Wins")
+        st.bar_chart(wins_series)
+
+        # Descriptive summary
+        num_races = len(races)
+        top_team, top_wins = max(team_wins.items(), key=lambda x: x[1])
+        total_teams = len(team_wins)
+        total_wins = sum(team_wins.values())
+        win_pct = round((top_wins / num_races) * 100, 1)
+        teams_with_2plus = sum(1 for w in team_wins.values() if w >= 2)
+        teams_with_1 = sum(1 for w in team_wins.values() if w == 1)
+
+        st.markdown(
+            f"The {year} Formula 1 season featured **{num_races} Grands Prix**, with race victories spread across "
+            f"**{total_teams} different teams**. The bar chart above shows the number of wins per team, where each bar’s height "
+            f"corresponds to the number of races that team won.\n\n"
+            
+            f"**{top_team}** led the season with **{top_wins} wins**, claiming approximately **{win_pct}%** of all races. "
+            f"This dominant performance is clearly visible in the chart, where {top_team}’s bar stands highest.\n\n"
+            
+            f"Out of the {total_teams} winning teams:\n"
+            f"- **{teams_with_2plus}** teams secured two or more victories,\n"
+            f"- **{teams_with_1}** team(s) won exactly one Grand Prix.\n\n"
+        )
 
     if rows:
         st.subheader("🏁 Race Winners")
@@ -544,6 +568,39 @@ elif st.session_state.page == 'Seasons':
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No points data returned by Jolpica.")
+    
+    # Summary of season points leader after last round
+    final_round = df_lines["Round"].max()
+    final_standings = df_lines[df_lines["Round"] == final_round]
+    season_leader = final_standings.sort_values("Points", ascending=False).iloc[0]
 
-   
+    st.markdown("### Summary")
+    st.info(
+    f"After {final_round} rounds of the {year} Formula 1 season, **{season_leader['Driver']}** "
+    f"emerged as the championship leader with a total of **{season_leader['Points']} points**. "
+    f"The points gap between the top 5 drivers has been evolving race by race, and this chart shows how the "
+    f"competition intensified (or stabilized) over time. A consistent performance and key victories in decisive rounds "
+    f"have positioned **{season_leader['Driver']}** as the main contender for the title."
+    )
 
+
+with st.sidebar:
+    st.markdown("---")
+    with st.expander("About this app"):
+        st.markdown("""
+        ### Formula 1 Analytics
+
+        #### Powered by
+        - [FastF1](https://theoehrly.github.io/Fast-F1/) – for in-depth race data
+        - [Ergast API](https://api.jolpi.ca/ergast/f1) via [Jolpica proxy](https://api.jolpi.ca/) – for historical F1 results
+        - [Wikipedia](https://www.wikipedia.org/) – for driver info, images and additional statistics 
+        - [Streamlit](https://streamlit.io/) – for builidng the app
+
+        #### Developer
+        *Adéla Bláhová, Anna Marie Břicháčková*  
+        Version: `0.1.0`  
+        GitHub: [github.com/blahovaa/Python-project](https://github.com/blahovaa/Python-project)
+
+        ---
+        _This project is for educational and demonstration purposes only. All data belongs to its respective providers._
+        """)
