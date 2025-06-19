@@ -13,10 +13,12 @@ from dateutil import parser
 import re
 from fastf1 import utils
 import seaborn as sns
+from collections import defaultdict
 
+# Design of the app
 st.set_page_config(layout="wide")
          
-
+# Defining variables, paths
 TEAM_COLORS = {
     "Red Bull":  "#1E5BC6",
     "Ferrari":   "#DC0000",
@@ -29,12 +31,11 @@ TEAM_COLORS = {
     "Sauber":    "#52E252",
     "Haas":      "#B6BABD",
 }
-
-previous_page = st.session_state.get('page', 'Home')
-
 cache_path = 'fastf1_cache'
 os.makedirs(cache_path, exist_ok=True)
 
+# Home page = main page
+previous_page = st.session_state.get('page', 'Home')
 if 'page' not in st.session_state:
     st.session_state.page = 'Home'
 
@@ -53,8 +54,9 @@ with st.sidebar:
 if st.session_state.page != previous_page:
     st.rerun()
 
-# Main content based on current page
+#----------- MAIN PAGE ------------
 if st.session_state.page == 'Home':
+    # Making 2 columns 
     col1, col2 = st.columns([2, 1]) 
 
     with col1:
@@ -103,7 +105,7 @@ if st.session_state.page == 'Home':
         except Exception as e:
             st.error(f"Could not load latest podium: {e}")
 
-    # Full-width section for championship standings
+    # Current season
     try:
         rows = requests.get(f"{API}/current/driverStandings.json", timeout=6).json() \
             ["MRData"]["StandingsTable"]["StandingsLists"][0]["DriverStandings"]
@@ -116,14 +118,45 @@ if st.session_state.page == 'Home':
             "Wins":  int(r["wins"])
         } for r in rows]).set_index("Pos")
 
-        st.markdown("### Current Season – Driver Results")
-        st.dataframe(standings_df, use_container_width=True)
-
     except Exception as e:
         st.error(f"Could not load championship standings: {e}")
+    
+    # Summary of results
+    driver_standings = standings_df.reset_index()
+    top_drivers = driver_standings.head(5)
+    leader = top_drivers.iloc[0]
+    second = top_drivers.iloc[1]
+    third = top_drivers.iloc[2]
+    fourth = top_drivers.iloc[3]
+    fifth = top_drivers.iloc[4]
+    gap_1_2 = int(leader.Pts) - int(second.Pts)
+    gap_1_3 = int(leader.Pts) - int(third.Pts)
+    gap_3_4 = int(third.Pts) - int(fourth.Pts)
+    teams_in_top5 = top_drivers['Team'].value_counts()
+    dominant_team = teams_in_top5.idxmax()
+    dominant_team_count = teams_in_top5.max()
+    
+    summary = f"""
+    The current Formula 1 season reflects the sport’s  unique mix of speed, competition, strategy, world-class driving and technical innovation.
+    **{leader.Driver}**, driving for **{leader.Team}**, currently leads the Drivers' Championship with **{leader.Pts} points**. He holds a lead of **{gap_1_2} points** over second-placed **{second.Driver}** ({second.Team}), and a margin of **{gap_1_3} points** to third-placed **{third.Driver}** ({third.Team}).
+
+    The fight for podium positions is particularly intense. **{third.Driver}**, **{fourth.Driver}**, and **{fifth.Driver}** are separated by only a few points, with just **{gap_3_4} points** between third and fourth place.  Among the top five, **{dominant_team}** stands out with **{dominant_team_count} drivers** currently occupying top spots in the standings. This highlights the team's consistency and strength across multiple races.
+
+    The season is still underway, thus, the title race remains wide open.
+      """
+
+    st.markdown("---")
+    st.header("Current Season")
+    st.markdown(summary)
+    st.dataframe(standings_df, use_container_width=True)
+
+    # About Formula 1
+    st.markdown("---")
+    st.header("Brief History of Formula 1")
 
 
 
+#----------- DRIVERS ------------
 elif st.session_state.page == 'Drivers':
     st.title("🏎️ Driver Statistics")
      # Function to fetch active drivers from current season standings
@@ -472,14 +505,14 @@ elif st.session_state.page == 'Races':
             st.session_state.compare_mode = False
 
 
-
+#----------- SEASONS ------------
 elif st.session_state.page == 'Seasons':
     st.title("📅 Season Analytics")
 
     API = "https://api.jolpi.ca/ergast/f1"
     year = st.selectbox("Season", list(range(1990, 2025+1)), index=24)
 
-    # Number of Grand Prix
+    # Race schedule from FastF1
     try:
         sched = fastf1.get_event_schedule(year)
         races = sched[sched.EventName.str.contains("Grand Prix")]
@@ -487,63 +520,202 @@ elif st.session_state.page == 'Seasons':
         st.error(f"Schedule error: {e}")
         st.stop()
 
-    st.write(f"There was {len(races)} Grands Prix in {year}")
+    # Standings from Jolpica
+    try:
+        standings_data = requests.get(f"{API}/{year}/driverStandings.json", timeout=6).json()
+        all_standings = standings_data["MRData"]["StandingsTable"]["StandingsLists"][0]["DriverStandings"]
+        driver_id_to_name = {
+            d["Driver"]["driverId"]: f"{d['Driver']['givenName']} {d['Driver']['familyName']}"
+            for d in all_standings
+        }
+    except Exception:
+        st.error("Could not fetch driver standings.")
+        st.stop()
 
-    # Extracting data from Jolpica
-    team_wins, rows = {}, []
-    with st.spinner("Loading winners from Jolpica…"):
+    # Analysis of race results
+    team_wins = {}
+    winner_rows = []
+    lines = []
+    dnf_counts = defaultdict(int)
+    dnf_reasons = defaultdict(int)
+
+    with st.spinner("Processing race data..."):
         for _, race in races.iterrows():
-            rnd = int(race.RoundNumber)  # adjusting the number format
+            rnd = int(race.RoundNumber)
             url = f"{API}/{year}/{rnd}/results.json"
             try:
-                res   = requests.get(url, timeout=6).json()
-                first = res["MRData"]["RaceTable"]["Races"][0]["Results"][0]
+                res = requests.get(url, timeout=6).json()
+                results = res["MRData"]["RaceTable"]["Races"][0]["Results"]
 
-                driver = f'{first["Driver"]["givenName"]} {first["Driver"]["familyName"]}'
-                team   = first["Constructor"]["name"]
+                # Winner data
+                winner = results[0]
+                winner_name = f"{winner['Driver']['givenName']} {winner['Driver']['familyName']}"
+                winner_team = winner["Constructor"]["name"]
+                team_wins[winner_team] = team_wins.get(winner_team, 0) + 1
+                winner_rows.append({"#": rnd, "Race": race.EventName, "Driver": winner_name, "Team": winner_team})
 
-                team_wins[team] = team_wins.get(team, 0) + 1
-                rows.append({"Race": race.EventName, "Driver": driver, "Team": team})
+                # DNF data
+                for r in results:
+                    driver_id = r["Driver"]["driverId"]
+                    status = r["status"].lower()
+                    if any(k in status for k in ["ret", "not classified", "dnf", "accident", "collision"]):
+                        dnf_counts[driver_id] += 1
+                        dnf_reasons[status] += 1
+
+                # Total points
+                points_res = requests.get(f"{API}/{year}/{rnd}/driverStandings.json", timeout=6).json()
+                round_standings = points_res["MRData"]["StandingsTable"]["StandingsLists"][0]["DriverStandings"]
+                for r in round_standings[:5]:
+                    lines.append({
+                        "Round": rnd,
+                        "Driver": r["Driver"]["familyName"],
+                        "Points": int(r["points"])
+                    })
             except Exception:
-                pass 
+                continue
 
+    # Total Wins By Team
     if team_wins:
-        st.subheader("🏆 Wins by Team")
-        st.bar_chart(pd.Series(team_wins, name="Wins"))
+        st.subheader("Total Wins by Team")
+        st.caption(f"The bar chart displays the number of Grand Prix wins achieved by each team during the **{year}** season.")
+        wins_series = pd.Series(team_wins, name="Wins")
+        st.bar_chart(wins_series)
 
-    if rows:
-        st.subheader("🏁 Race Winners")
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        num_races = len(races)
+        top_team, top_wins = max(team_wins.items(), key=lambda x: x[1])
+        total_teams = len(team_wins)
+        win_pct = round((top_wins / num_races) * 100, 1)
+        teams_with_2plus = sum(1 for w in team_wins.values() if w >= 2)
+        teams_with_1 = sum(1 for w in team_wins.values() if w == 1)
+
+        st.markdown(
+            f"The {year} Formula 1 season featured **{num_races} Grands Prix**, with race victories spread across **{total_teams} different teams**. **{top_team}** led the season with **{top_wins} wins**, accounting for **{win_pct}%** of the calendar.\n\n"
+            f"Out of all winning teams, **{teams_with_2plus}** team(s) won two or more races and **{teams_with_1}** team(s) secured a single victory.\n"
+        )
+        st.markdown("---")
+
+    # Winners of races in selected season
+    if winner_rows:
+        st.subheader("Race Winners")
+        st.caption("The table lists the winners of each Grand Prix.")
+        winner_df = pd.DataFrame(winner_rows)
+        winner_df.index = winner_df.index + 1
+        # Displaying table
+        st.dataframe(winner_df, use_container_width=True)
     else:
-        st.info("No winner data returned by Jolpica.")
+        st.info("No winner data returned.")
 
-    # Progress of drivers
-    st.subheader("📈 Cumulative Points Progress – Top 5 Drivers")
-
-    lines = []
-    for rnd in range(1, len(races) + 1):
-        try:
-            rows = requests.get(f"{API}/{year}/{rnd}/driverStandings.json", timeout=6).json() \
-                   ["MRData"]["StandingsTable"]["StandingsLists"][0]["DriverStandings"]
-            for r in rows[:5]:                     # only top-5 keep chart clear
-                lines.append({
-                    "Round": rnd,
-                    "Driver": r["Driver"]["familyName"],    # surname only
-                    "Points": int(r["points"])
-                })
-        except Exception:
-            pass
+    # Cumulative points graph
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.caption("The line chart shows how the total points of the top 5 drivers evolved round-by-round during the season (using cumulative championship points).")
 
     if lines:
         df_lines = pd.DataFrame(lines)
-        fig = px.line(df_lines, x="Round", y="Points", color="Driver",
-                      markers=True,
-                      title=f"{year} – Cumulative Championship Points (Top 5)")
-        fig.update_layout(xaxis_title="Round", yaxis_title="Points",
-                          legend_title=None, margin=dict(l=0, r=0, t=40, b=0))
+        fig = px.line(df_lines, x="Round", y="Points", color="Driver", markers=True)
+        fig.update_layout(
+            xaxis_title="Round",
+            yaxis_title="Points",
+            legend_title=None,
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
         st.plotly_chart(fig, use_container_width=True)
+
+        # Summary
+        final_round = df_lines["Round"].max()
+        final_standings = df_lines[df_lines["Round"] == final_round]
+        sorted_standings = final_standings.sort_values("Points", ascending=False)
+        season_leader = sorted_standings.iloc[0]
+        leader_points = season_leader["Points"]
+        top5_points = sorted_standings["Points"].tolist()
+        gaps = [leader_points - p for p in top5_points[1:]]
+        min_gap = min(gaps) if gaps else 0
+        max_gap = max(gaps) if gaps else 0
+        close_challengers = sum(1 for p in top5_points[1:] if leader_points - p <= 10)
+
+        st.markdown(
+            f"After **{final_round} rounds** of the **{year} Formula 1 season**, **{season_leader['Driver']}** led the championship with **{int(leader_points)} points**.\n\n"
+            f"The points gap between the leader and the rest of the top 5 ranged from **{min_gap}** to **{max_gap} points**.\n"
+            f"There were **{close_challengers} drivers** within 10 points of the leader.\n"
+            f"The driver in **5th place** held **{int(top5_points[4])} points**, a total spread of **{leader_points - top5_points[4]} points**.\n"
+            f"This spread shows how early consistency and strong finishes shape the emerging title battle."
+            )
     else:
-        st.info("No points data returned by Jolpica.")
+        st.markdown("No points data available.")
+    
+    st.markdown("---")
 
-   
+    # DNFs
+    st.subheader("DNFs ('Did Not Finish') Across All Drivers")
+    st.caption("The graph shows the number of times each driver failed to finish a race during the season (top 5 drivers of season highlighted in red).")
 
+    if dnf_counts:
+        dnf_df = pd.DataFrame({
+            "Driver": [driver_id_to_name.get(did, did) for did in dnf_counts],
+            "DNFs": [dnf_counts[did] for did in dnf_counts]
+        }).sort_values("DNFs", ascending=False)
+
+        top5_last_names = set(sorted_standings["Driver"].tolist())
+        dnf_df["LastName"] = dnf_df["Driver"].apply(lambda x: x.split()[-1]) 
+        dnf_df["Top5"] = dnf_df["LastName"].apply(lambda x: x in top5_last_names)
+        fig_dnf = px.bar(
+            dnf_df,
+            x="Driver",
+            y="DNFs",
+            color="Top5",
+            color_discrete_map={True: "crimson", False: "gray"}
+            )
+        fig_dnf.update_layout(showlegend=False, xaxis_title=None, yaxis_title="DNFs")
+        # Plot DNFs
+        st.plotly_chart(fig_dnf, use_container_width=True)
+
+        total_drivers = len(dnf_counts)
+        total_dnfs = sum(dnf_counts.values())
+        most_dnf_driver = dnf_df.iloc[0]
+
+        if dnf_reasons:
+            reason_df = pd.DataFrame({
+                "Reason": list(dnf_reasons.keys()),
+                "Count": list(dnf_reasons.values())
+            }).sort_values("Count", ascending=False)
+            reason_df.index = reason_df.index + 1
+            top_reason = reason_df.iloc[0]
+            
+        st.markdown(
+            f"In the {year} season, a total of **{total_dnfs} retirements (DNFs)** were recorded among **{total_drivers} drivers**. "
+            f"**{most_dnf_driver['Driver']}** had the most reliability issues, retiring from **{most_dnf_driver['DNFs']} races**. "
+            f"High DNF counts may point to reliability issues or frequent involvement in incidents. These figures thus highlight how mechanical reliability and incident avoidance play a key role in Formula 1; even one or two retirements in a tight season can have a dramatic impact on final standings. \n\n"
+        
+            f"The most common reasons of DNFs include mechanical failures, crashes, and other incidents. As shown in the table below, in the **{year} Formula 1 season**, the most prevalent cause was **{top_reason['Reason']}**, which occurred **{top_reason['Count']} times**.\n"
+            f"This breakdown offers insights into whether retirements were more often due to mechanical failure, accidents, or racing incidents — essential knowledge for teams aiming to improve reliability and racecraft."         
+            )
+
+        st.caption("The table lists the most frequent causes of retirements during the season.")
+        # Display table with reasons of DNFs
+        st.dataframe(reason_df, use_container_width=True)
+    else:
+        st.info("No DNF data available for this season.")
+    
+    
+
+
+#----------- ABOUT THE APP ------------
+with st.sidebar:
+    st.markdown("---")
+    with st.expander("About this app"):
+        st.markdown("""
+        ### Formula 1 Analytics
+
+        #### Powered by
+        - [FastF1](https://theoehrly.github.io/Fast-F1/) – detailed race data
+        - [Ergast API](https://api.jolpi.ca/ergast/f1) via [Jolpica proxy](https://api.jolpi.ca/) – historical F1 results
+        - [Wikipedia](https://www.wikipedia.org/) – driver info, images and additional statistics 
+        - [Streamlit](https://streamlit.io/) – for builidng the app
+
+        #### Developer
+        *Adéla Bláhová, Anna Marie Břicháčková*  
+        Version: `0.1.0`  
+        GitHub: [github.com/blahovaa/Python-project](https://github.com/blahovaa/Python-project)
+
+        ---
+        _This project is for educational and demonstration purposes only. All data belongs to its respective providers._
+        """)
