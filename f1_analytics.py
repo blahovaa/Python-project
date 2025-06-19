@@ -283,7 +283,29 @@ elif st.session_state.page == 'Races':
         results = session.results
     except Exception as e:
         st.error(f"Could not load session: {e}")
-    
+
+    #Display Race info
+    #event_date = session.event['SessionDate']
+
+    st.markdown(f"""
+    ### Race Info
+    - Location: {session.event['Location']}, {session.event['Country']}
+    """)
+    #Race Stats
+    laps = session.laps
+    fastest_lap = laps.pick_fastest()
+    avg_lap_time = laps['LapTime'].mean()
+
+    st.markdown(f"""
+    ### Lap Stats
+    - Total Laps: {laps['LapNumber'].max()}
+    - Fastest Lap: {fastest_lap['Driver']} – {fastest_lap['LapTime']}
+    - Average Lap Time: {avg_lap_time}
+    """)
+    #number of drivers that did not finish 
+    dnfs = session.results[session.results['Status'] != 'Finished']
+    st.markdown(f" DNFs: {len(dnfs)} drivers did not finish the race") # add names and reason
+
     #positions by laps
     lap_pos = session.laps.groupby(["LapNumber", "Driver"])["Position"].mean().unstack()
 
@@ -300,27 +322,31 @@ elif st.session_state.page == 'Races':
         pos = top3.loc[driver_code]
         top3_info.append((full_name, team, int(pos)))
 
-    # Display top 3 drivers
-    st.markdown("### 🏆 Podium")
-    for i, (name, team, pos) in enumerate(top3_info, 1):
-        st.markdown(f"**{i}. {name}** ({team})")
+    col1, col2 = st.columns([1, 2]) 
 
-    palette = sns.color_palette("tab20", n_colors=len(lap_pos.columns))
+    with col1:
+        # Display top 3 drivers
+        st.markdown("### 🏆 Podium")
+        for i, (name, team, pos) in enumerate(top3_info, 1):
+            st.markdown(f"**{i}. {name}** ({team})")
 
-    # Plot
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots(figsize=(12, 8))
-    lap_pos.plot(ax=ax, linewidth=2, color=palette)
+    with col2:
+        palette = sns.color_palette("tab20", n_colors=len(lap_pos.columns))
 
-    ax.set_title("Race Position Chart", fontsize=18, weight='bold')
-    ax.set_xlabel("Lap Number", fontsize=14)
-    ax.set_ylabel("Position", fontsize=14)
-    ax.invert_yaxis() 
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-    ax.legend(title="Driver", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+        # Plot
+        sns.set_style("whitegrid")
+        fig, ax = plt.subplots(figsize=(12, 8))
+        lap_pos.plot(ax=ax, linewidth=2, color=palette)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+        ax.set_title("Race Position Chart", fontsize=18, weight='bold')
+        ax.set_xlabel("Lap Number", fontsize=14)
+        ax.set_ylabel("Position", fontsize=14)
+        ax.invert_yaxis() 
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.legend(title="Driver", bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+
+        plt.tight_layout()
+        st.pyplot(fig)
 
     #add a button to compare drivers
     if st.button("Compare Drivers"):
@@ -401,36 +427,38 @@ elif st.session_state.page == 'Races':
             st.write(f"Pits: `{int(num_pits2)}`")
             st.write(f"Grid → Finish: `{int(grid2)} → {int(pos2)}`")
         #plots
+        col1, col2 = st.columns(2)
         palette = sns.color_palette("Set2", n_colors=2)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        with col1:
+            fig, ax = plt.subplots(figsize=(10, 6))
 
-        ax.plot(
-            driver1_laps['LapNumber'], 
-            driver1_laps['LapTime'].dt.total_seconds(), 
-            label=driver1_full, 
-            color=palette[0], 
-            linewidth=2, 
-            marker='o'
-        )
+            ax.plot(
+                driver1_laps['LapNumber'], 
+                driver1_laps['LapTime'].dt.total_seconds(), 
+                label=driver1_full, 
+                color=palette[0], 
+                linewidth=2, 
+                marker='o'
+            )
 
-        ax.plot(
-            driver2_laps['LapNumber'], 
-            driver2_laps['LapTime'].dt.total_seconds(), 
-            label=driver2_full, 
-            color=palette[1], 
-            linewidth=2, 
-            marker='s'
-        )
+            ax.plot(
+                driver2_laps['LapNumber'], 
+                driver2_laps['LapTime'].dt.total_seconds(), 
+                label=driver2_full, 
+                color=palette[1], 
+                linewidth=2, 
+                marker='s'
+            )
 
-        ax.set_title(f"Lap Time Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
-        ax.set_xlabel("Lap Number", fontsize=14)
-        ax.set_ylabel("Lap Time (s)", fontsize=14)
-        ax.grid(True, linestyle='--', alpha=0.6)
-        ax.legend(fontsize=12)
-        plt.tight_layout()
+            ax.set_title(f"Lap Time Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
+            ax.set_xlabel("Lap Number", fontsize=14)
+            ax.set_ylabel("Lap Time (s)", fontsize=14)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.legend(fontsize=12)
+            plt.tight_layout()
 
-        st.pyplot(fig)
+            st.pyplot(fig)
 
         #compare speed on their fastest lap
         driver1_fastest = laps.pick_driver(driver1).pick_fastest()
@@ -439,34 +467,35 @@ elif st.session_state.page == 'Races':
         tel1 = driver1_fastest.get_car_data().add_distance()
         tel2 = driver2_fastest.get_car_data().add_distance()
 
-        fig, ax = plt.subplots(figsize=(12, 6))
+        with col2: 
+            fig, ax = plt.subplots(figsize=(12, 6))
 
-        palette = sns.color_palette("Set2", n_colors=2)
+            palette = sns.color_palette("Set2", n_colors=2)
 
-        ax.plot(
-            tel1['Distance'], tel1['Speed'], 
-            label=f"{driver1_full} Speed", 
-            color=palette[0], 
-            linewidth=2, 
-            linestyle='-'
-        )
+            ax.plot(
+                tel1['Distance'], tel1['Speed'], 
+                label=f"{driver1_full} Speed", 
+                color=palette[0], 
+                linewidth=2, 
+                linestyle='-'
+            )
 
-        ax.plot(
-            tel2['Distance'], tel2['Speed'], 
-            label=f"{driver2_full} Speed", 
-            color=palette[1], 
-            linewidth=2, 
-            linestyle='--'
-        )
+            ax.plot(
+                tel2['Distance'], tel2['Speed'], 
+                label=f"{driver2_full} Speed", 
+                color=palette[1], 
+                linewidth=2, 
+                linestyle='--'
+            )
 
-        ax.set_title(f"Telemetry Speed Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
-        ax.set_xlabel("Distance (m)", fontsize=14)
-        ax.set_ylabel("Speed (km/h)", fontsize=14)
-        ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
-        ax.legend(fontsize=12, loc='best')
+            ax.set_title(f"Telemetry Speed Comparison: {driver1_full} vs {driver2_full}", fontsize=16, weight='bold')
+            ax.set_xlabel("Distance (m)", fontsize=14)
+            ax.set_ylabel("Speed (km/h)", fontsize=14)
+            ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+            ax.legend(fontsize=12, loc='best')
 
-        plt.tight_layout()
-        st.pyplot(fig)
+            plt.tight_layout()
+            st.pyplot(fig)
 
         if st.button("❌ Hide Comparison"):
             st.session_state.compare_mode = False
