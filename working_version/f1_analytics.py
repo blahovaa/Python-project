@@ -33,8 +33,6 @@ TEAM_COLORS = {
     "Sauber":    "#52E252",
     "Haas":      "#B6BABD",
 }
-cache_path = 'fastf1_cache'
-os.makedirs(cache_path, exist_ok=True)
 
 # Home page = main page
 previous_page = st.session_state.get('page', 'Home')
