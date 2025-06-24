@@ -1,2 +1,137 @@
 # Python-project
-F1 Analytics
+
+# F1 Analytics
+Welcome to **Formula 1 Analytics**, an interactive Python dashboard that provides insights into the world of Formula 1. This tool visualizes driver standings, constructor performance, race results, lap times and much more. It is built using real-world data from FastF1 and the Ergast API, enriched with information scraped from Wikipedia.
+
+Created by: **Adéla Bláhová** & **Anna Marie Břicháčková**  
+Version: `0.1.0`  
+GitHub: [https://github.com/blahovaa/Python-project](https://github.com/blahovaa/Python-project)
+
+---
+
+## Features
+
+- Overview of the latest Grand Prix podium
+- Live driver standings and race summaries for the current season
+- Brief introduction of Formula 1 (via scraping of Wikipedia)
+- Driver profiles (via scraping of Wikipedia)
+- Constructor statistics, championship comparison
+- Season analysis with race-by-race breakdowns and cumulative point charts
+- Analysis of selected race
+- Race circuit maps
+- Lap-by-lap race position visualizations
+- Driver telemetry and lap comparison tools
+- DNF (Did Not Finish) statistics and retirement reasons
+
+---
+
+## How to Run the Project Locally
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/blahovaa/Python-project.git
+cd Python-project
+```
+
+### 2. Install all required packages
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Run the Streamlit app
+
+```bash
+streamlit run f1_analytics.py
+```
+
+---
+## How it works?
+
+The dashboard consists of a single Streamlit application split into 4 main pages:
+- `Home`: Introduction, current standings, brief info about Formula 1
+- `Drivers`: Select driver - driver stats, career data
+- `Races`: Select race in a specific year - interactive race session viewer & Select drivers - comparison
+- `Seasons`: Select season - historical analysis
+
+-`About the app`
+
+Navigation is handled via the sidebar.
+
+---
+
+## Project Structure
+
+```
+f1_analytics/
+│
+├── main.py          
+├── pages/
+│   ├── home.py
+│   ├── drivers.py
+│   ├── seasons.py
+│   └── races.py
+├── utils/
+│   ├── wiki_scraper.py
+│   ├── ergast_api.py
+│   └── plot_helpers.py
+├── requirements.txt
+└── __init__.py         
+```
+
+All logic is contained in `f1_analytics.py`, with modular organization using functions and caching for speed.
+
+---
+
+### Project Structure
+```
+Formula1_Analytics/
+│
+├── main.py               # Main Streamlit entry point (controls page navigation)
+├── drivers.py            # Script for driver selection and career stats
+├── races.py              # Script to visualize specific races and compare drivers
+├── seasons.py            # Script for analyzing historical season-level data
+├── utils.py              # Helper functions for scraping, caching, and formatting
+├── requirements.txt      # List of all required Python libraries
+├── README.md             # Project documentation
+└── fastf1_cache/         # Cached data (created automatically)
+```
+
+---
+
+
+
+
+## Data Sources
+
+This application integrates multiple data sources:
+
+- **FastF1**: 
+-Öhrly, T. (2024). *FastF1 – Python package for F1 telemetry*. https://theoehrly.github.io/Fast-F1
+
+- **Ergast API (via Jolpica Proxy)**: 
+- Ergast Developer API. (n.d.). *Motorsport data API*. https://ergast.com/mrd/  
+- Jolpica Proxy API. (n.d.). *Unofficial proxy for Ergast F1 API*. https://api.jolpi.ca
+
+- **Wikipedia**: 
+-Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One 
+-Driver profiles
+
+
+---
+
+## Final Words
+
+We hope this project helps you explore and understand Formula 1 from a data perspective. Whether you're a fan, student, or analyst, this dashboard is designed to provide insights in an understandable and interactive way.
+
+Thank you and enjoy the app!
+
+*Adéla & Anna*
+
+---
+
+## Disclaimer
+
+This project is built purely for educational and demonstration purposes. All logos, images, and trademarks belong to their respective owners. All data is sourced from public APIs.
+
