@@ -84,15 +84,15 @@ Originally, all logic was contained in a single script: f1_analytics.py (now wor
 This application integrates multiple data sources:
 
 - **FastF1**: 
-    -Öhrly, T. (2024). *FastF1 – Python package for F1 telemetry*. https://theoehrly.github.io/Fast-F1
+    > Schaefer, P. (n.,d.). *FastF1* (Version 3.5.3). https://theoehrly.github.io/Fast-F1
 
 - **Ergast API (via Jolpica Proxy)**: 
-    - Ergast Developer API. (n.d.). *Motorsport data API*. https://ergast.com/mrd/  
-    - Jolpica Proxy API. (n.d.). *Unofficial proxy for Ergast F1 API*. https://api.jolpi.ca
+    > Jolpica. (n.d.). Jolpica F1 API. Retrieved June 24, 2025, from https://api.jolpi.ca/ergast/f1/
+    > Github: jolpica-f1. https://github.com/jolpica/jolpica-f1
 
 - **Wikipedia**: 
-    -Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One 
-    -Driver profiles
+    > Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One 
+    > Driver profiles
 
 
 ---
