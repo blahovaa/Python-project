@@ -87,12 +87,10 @@ This application integrates multiple data sources:
     > Schaefer, P. (n.,d.). *FastF1* (Version 3.5.3). https://theoehrly.github.io/Fast-F1
 
 - **Ergast API (via Jolpica Proxy)**: 
-    > Jolpica. (n.d.). Jolpica F1 API. Retrieved June 24, 2025, from https://api.jolpi.ca/ergast/f1/
-    > Github: jolpica-f1. https://github.com/jolpica/jolpica-f1
+    > Jolpica. (n.d.). Jolpica F1 API. Retrieved June 24, 2025, from https://api.jolpi.ca/ergast/f1/ (Github: jolpica-f1. https://github.com/jolpica/jolpica-f1)
 
 - **Wikipedia**: 
-    > Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One 
-    > Driver profiles
+    > Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One  ( + driver profiles)
 
 
 ---
