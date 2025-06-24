@@ -1,8 +1,8 @@
 import streamlit as st
-from pages.home import f_home
-from pages.drivers import f_drivers
-from pages.seasons import f_seasons
-from pages.races import f_races
+from home import f_home
+from drivers import f_drivers
+from seasons import f_seasons
+from races import f_races
 
 st.set_page_config(layout="wide")
 
