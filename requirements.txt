@@ -2,4 +2,9 @@ streamlit
 fastf1
 pandas
 numpy
-os
+matplotlib
+plotly
+requests
+bs4
+python-dateutil
+seaborn
