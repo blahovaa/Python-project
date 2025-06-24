@@ -84,23 +84,6 @@ All logic is contained in `f1_analytics.py`, with modular organization using fun
 
 ---
 
-### Project Structure
-```
-Formula1_Analytics/
-│
-├── main.py               # Main Streamlit entry point (controls page navigation)
-├── drivers.py            # Script for driver selection and career stats
-├── races.py              # Script to visualize specific races and compare drivers
-├── seasons.py            # Script for analyzing historical season-level data
-├── utils.py              # Helper functions for scraping, caching, and formatting
-├── requirements.txt      # List of all required Python libraries
-├── README.md             # Project documentation
-└── fastf1_cache/         # Cached data (created automatically)
-```
-
----
-
-
 
 
 ## Data Sources
