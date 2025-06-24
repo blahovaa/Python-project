@@ -32,3 +32,25 @@ elif st.session_state.page == 'Seasons':
 elif st.session_state.page == 'Races':
     f_races()
 
+# Final section = about the app
+with st.sidebar:
+    st.markdown("---")
+    with st.expander("About this app"):
+        st.markdown("""
+        ### Formula 1 Analytics
+
+        #### Powered by
+        - [FastF1](https://theoehrly.github.io/Fast-F1/) – detailed race data
+        - [Ergast API](https://api.jolpi.ca/ergast/f1) via [Jolpica proxy](https://api.jolpi.ca/) – historical F1 results
+        - [Wikipedia](https://www.wikipedia.org/) – driver info, images and additional statistics 
+        - [Streamlit](https://streamlit.io/) – for builidng the app
+
+        #### Developer
+        *Adéla Bláhová, Anna Marie Břicháčková*  
+        Version: `0.1.0`  
+        GitHub: [github.com/blahovaa/Python-project](https://github.com/blahovaa/Python-project)
+
+        ---
+        _This project is for educational and demonstration purposes only. All data belongs to its respective providers._
+        """)
+
