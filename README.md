@@ -107,5 +107,5 @@ Thank you and enjoy the app!
 
 ## Disclaimer
 
-This project is built purely for educational and demonstration purposes. All logos, images, and trademarks belong to their respective owners. All data is sourced from public APIs.
+This project is built purely for educational and demonstration purposes. All logos, images, and trademarks belong to their respective owners. All data is sourced from public APIs. AI tools, including ChatGPT, were used to assist with coding and debugging.
 
