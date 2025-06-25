@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ### 4. Run the Streamlit app
 
 ```bash
-streamlit run f1_analytics.py
+streamlit run main.py
 ```
 
 ---
@@ -55,7 +55,6 @@ The dashboard consists of a single Streamlit application split into 4 main pages
 - `Races`: Select race in a specific year - interactive race session viewer & Select drivers - comparison
 - `Seasons`: Select season - historical analysis
 
--`About the app`
 
 Navigation is handled via the sidebar.
 
@@ -64,23 +63,17 @@ Navigation is handled via the sidebar.
 ## Project Structure
 
 ```
-f1_analytics/
+f1_analytics.py
 │
-├── main.py          
-├── pages/
-│   ├── home.py
-│   ├── drivers.py
-│   ├── seasons.py
-│   └── races.py
-├── utils/
-│   ├── wiki_scraper.py
-│   ├── ergast_api.py
-│   └── plot_helpers.py
-├── requirements.txt
-└── __init__.py         
+├── main.py             # Main entry point for the app
+├── home.py             
+├── drivers.py          
+├── seasons.py          
+├── races.py            
+└── requirements.txt  
 ```
 
-All logic is contained in `f1_analytics.py`, with modular organization using functions and caching for speed.
+Originally, all logic was contained in a single script: f1_analytics.py (now working file, where commits of each creator can be found). For better maintainability, the app has been recretated so that main.py handles navigation and page routing, while each individual page’s functionality is moved into its own dedicated file (home.py, drivers.py, etc.).
 
 ---
 
@@ -91,15 +84,13 @@ All logic is contained in `f1_analytics.py`, with modular organization using fun
 This application integrates multiple data sources:
 
 - **FastF1**: 
--Öhrly, T. (2024). *FastF1 – Python package for F1 telemetry*. https://theoehrly.github.io/Fast-F1
+    > Schaefer, P. (n.,d.). *FastF1* (Version 3.5.3). https://theoehrly.github.io/Fast-F1
 
 - **Ergast API (via Jolpica Proxy)**: 
-- Ergast Developer API. (n.d.). *Motorsport data API*. https://ergast.com/mrd/  
-- Jolpica Proxy API. (n.d.). *Unofficial proxy for Ergast F1 API*. https://api.jolpi.ca
+    > Jolpica. (n.d.). Jolpica F1 API. Retrieved June 24, 2025, from https://api.jolpi.ca/ergast/f1/ (Github: jolpica-f1. https://github.com/jolpica/jolpica-f1)
 
 - **Wikipedia**: 
--Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One 
--Driver profiles
+    > Formula One. (n.d.). *Formula One*. In Wikipedia. https://en.wikipedia.org/wiki/Formula_One  ( + driver profiles)
 
 
 ---
