@@ -1,19 +1,9 @@
 import streamlit as st
 import fastf1
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
-import os
-import requests 
+import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
-from datetime import timedelta
-from dateutil import parser
-import re
-from fastf1 import utils
-import seaborn as sns
 from collections import defaultdict
 
 # Defining variables, paths
