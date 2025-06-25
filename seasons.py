@@ -16,7 +16,7 @@ from fastf1 import utils
 import seaborn as sns
 from collections import defaultdict
 
-def f_home():
+def f_seasons():
     API = "https://api.jolpi.ca/ergast/f1"
     year = st.selectbox("Season", list(range(1990, 2025+1)), index=24)
 
