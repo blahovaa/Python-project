@@ -45,6 +45,10 @@ pip install -r requirements.txt
 ```bash
 streamlit run main.py
 ```
+if the above is not working try:
+```bash
+python -m streamlit run main.py
+```
 
 ---
 ## How it works?
