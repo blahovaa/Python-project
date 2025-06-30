@@ -192,7 +192,7 @@ def f_drivers():
                 showarrow=False,
                 yanchor="top",
                 textangle=0,
-                font=dict(size=10),
+                font=dict(size=9),
                 align="center"
             )
             top_y_base = 0.8
