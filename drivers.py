@@ -4,11 +4,14 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import re
+from collections import defaultdict
 
 def f_drivers():
     st.title("🏎️ Driver Statistics")
     # Function to fetch active drivers from current season standings
-    def fetch_current_drivers(season="2025"):
+    def fetch_current_drivers(season=None):
+        if season is None:
+            season = datetime.now().year
         url = f"https://api.jolpi.ca/ergast/f1/{season}/driverStandings.json"
         response = requests.get(url)
         if response.status_code == 200:
@@ -144,19 +147,33 @@ def f_drivers():
             y1=0,
             line=dict(color=dark_blue, width=3)
         )
+        year_counts = defaultdict(int)
+        for y in years:
+            year_counts[y] += 1
+
+        used_offsets = defaultdict(int)
 
         for i, year in enumerate(years):
+            count = year_counts[year]
+            if count > 1:
+                offset_index = used_offsets[year]
+                x_jitter = 0.12 * (offset_index - (count - 1) / 2)
+                x_value = year + x_jitter
+                used_offsets[year] += 1
+            else:
+                x_value = year
+
             fig.add_shape(
                 type="line",
-                x0=year,
+                x0=x_value,
                 y0=0,
-                x1=year,
+                x1=x_value,
                 y1=0.6,
                 line=dict(color=dark_blue, width=2)
             )
 
             fig.add_trace(go.Scatter(
-                x=[year],
+                x=[x_value],
                 y=[0.6],
                 mode="markers",
                 marker=dict(color=dark_blue, size=20),
@@ -164,28 +181,36 @@ def f_drivers():
                 hovertemplate=f"<b>{labels[i]}</b><br>{races[i]}<br>Year: {year}<extra></extra>"
             ))
 
+            bottom_y_base = -0.1
+            bottom_y_offset = 0.1 *used_offsets[year] 
+            bottom_y_value = bottom_y_base - bottom_y_offset
+
             fig.add_annotation(
-                x=year,
-                y=-0.1,
-                text=f"<b>{labels[i]}</b><br>{year}",
+                x=x_value,
+                y=bottom_y_value,
+                text=f"<b>{labels[i]}</b>",
                 showarrow=False,
                 yanchor="top",
                 textangle=0,
                 font=dict(size=10),
                 align="center"
             )
+            top_y_base = 0.8
+            top_y_offset = 0.15  *used_offsets[year] 
+            top_y_value = top_y_base - top_y_offset
 
             race_name_only = re.sub(r'^(\d{4}\s+)|(\s+\(\d{4}\))$', '', races[i])
             fig.add_annotation(
-                x=year,
-                y=0.8,
+                x=x_value,
+                y=top_y_value,
                 text=race_name_only,
                 textangle=30,
                 showarrow=False,
                 yanchor="bottom",
                 font=dict(size=11, color="gray"),
                 align="center",
-                xanchor="center"
+                xanchor="center", 
+                xshift= 5
             )
         fig.update_yaxes(visible=False, range=[-0.5, 1])
         padding = 0.3
@@ -232,7 +257,7 @@ def f_drivers():
         return
 
     driver_names = [driver['name'] for driver in drivers]
-    selected_driver_name = st.selectbox("Select a Driver", driver_names)
+    selected_driver_name = st.selectbox("Select a Driver from current season", driver_names)
     driver_wiki_url = build_wiki_url(selected_driver_name)
     selected_driver = next(d for d in drivers if d['name'] == selected_driver_name)
 
