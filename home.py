@@ -32,7 +32,7 @@ def f_home():
         Right here on the **Home** page, you’ll find a summary of the most recent Grand Prix podium, along with the current driver standings for the ongoing season. Furthermore, a brief overview of Formula 1, scraped from Wikipedia, is provided below.
 
         Use the sidebar to explore more:
-        - Browse detailed **driver profiles** with extra info pulled from Wikipedia
+        - Browse detailed **driver profiles** of active drivers in the current season with extra info pulled from Wikipedia
         - Analyze how **teams have performed** across past seasons
         - Compare **individual races**, including lap times, race pace, and telemetry charts
 
